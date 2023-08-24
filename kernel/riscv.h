@@ -24,6 +24,10 @@
 #define MIP_STIP (1 << IRQ_S_TIMER) // s-mode timer interrupt pending
 #define MIP_MSIP (1 << IRQ_M_SOFT)  // m-mode software interrupt pending
 
+// plic handling. added @lab5_2
+#define IRQ_M_EXT 11                // m-mode external interrupt
+#define MIP_MEIP (1 << IRQ_M_EXT)  // m-mode external interrupt pending
+
 // pysical memory protection choices
 #define PMP_R 0x01
 #define PMP_W 0x02
@@ -55,6 +59,10 @@
 // irqs (interrupts). added @lab1_3
 #define CAUSE_MTIMER 0x8000000000000007
 #define CAUSE_MTIMER_S_TRAP 0x8000000000000001
+
+// plics. added @lab5_2
+#define CAUSE_MEXTERNAL 0x800000000000000b
+#define CAUSE_MEXTERNEL_S_TRAP 0x8000000000000009
 
 //Supervisor interrupt-pending register
 #define SIP_SSIP (1L << 1)

@@ -93,6 +93,11 @@ typedef struct process_t {
 
   // file system. added @lab4_1
   proc_file_management *pfiles;
+
+  // wake up callback, registered by do_sleep(). added @lab5_2
+  // it will be called when process is waken up.
+  void (*wake_callback)(void *);
+  void *wake_callback_arg;
 }process;
 
 // switch to run user app
@@ -110,4 +115,18 @@ int do_fork(process* parent);
 // current running process
 extern process* current;
 
+// prototype declarations added @lab5_2
+// sleep current process
+void do_sleep(void (*wake_cb)(void *), void *wake_cb_arg);
+// awake process with pid
+void do_wake(uint64 pid);
+// set wake callback for process with pid
+void set_wake_callback(uint64 pid, void (*wake_cb)(void *), void *wake_cb_arg);
+
+extern process procs[NPROC];
+
+struct update_uartvalue_ctx {
+  char uartvalue;
+  uint64 pid;
+};
 #endif

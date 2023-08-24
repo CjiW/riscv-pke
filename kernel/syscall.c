@@ -223,6 +223,18 @@ void sys_user_uart_putchar(uint8 ch) {
   *tx = ch;
 }
 
+// added @lab5_1. Sets the return value of the uart_getchar system call, which should be called
+// when waking up the process. For ctx, there needs to be the process number that initiates 
+// the system call and the data obtained from the uart device.
+void update_uartvalue(void *ctx) {
+  struct update_uartvalue_ctx *uart_ctx = (struct update_uartvalue_ctx *)ctx;
+  char value = uart_ctx->uartvalue;
+  process *proc = &procs[uart_ctx->pid];
+
+  // set system call return value
+  proc->trapframe->regs.a0 = (uint64)value;
+}
+
 // added @lab5_1
 ssize_t sys_user_uart_getchar() {
   // TODO (lab5_1 and lab5_2): implment the syscall of sys_user_uart_getchar and modify it in lab5_2.

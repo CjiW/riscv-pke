@@ -254,3 +254,31 @@ int do_fork( process* parent)
 
   return child->pid;
 }
+
+// following 3 functions are added @lab5_2
+void do_sleep(void wake_cb(void*), void* wake_cb_arg){
+  current->status = BLOCKED;
+  set_wake_callback(current->pid, wake_cb, wake_cb_arg);
+  schedule();
+}
+
+extern process* ready_queue_head;
+
+void do_wake(uint64 pid){
+  procs[pid].status = READY;
+  current->status = READY;
+  insert_to_ready_queue(&procs[pid]);
+  insert_to_ready_queue( current );
+
+  if (procs[pid].wake_callback)
+    procs[pid].wake_callback(procs[pid].wake_callback_arg);
+
+  schedule();
+}
+
+void set_wake_callback(uint64 pid, void (*wake_cb)(void *), void *wake_cb_arg) {
+  if (wake_cb != NULL)
+    procs[pid].wake_callback = wake_cb;
+  if (wake_cb_arg != NULL)
+    procs[pid].wake_callback_arg = wake_cb_arg;
+}

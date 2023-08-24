@@ -143,6 +143,10 @@ void kern_vm_init(void) {
   kern_vm_map(t_page_dir, (uint64)_etext, (uint64)_etext, PHYS_TOP - (uint64)_etext,
          prot_to_type(PROT_READ | PROT_WRITE, 0));
 
+  // plic IO space maping. @lab5_2
+  kern_vm_map(t_page_dir, (uint64)0xc201000, (uint64)0xc201000, (uint64)0x100,
+         prot_to_type(PROT_READ | PROT_WRITE, 0));
+
   sprint("physical address of _etext is: 0x%lx\n", lookup_pa(t_page_dir, (uint64)_etext));
 
   g_kernel_pagetable = t_page_dir;

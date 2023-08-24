@@ -106,6 +106,24 @@ void smode_trap_handler(void) {
       // invoke round-robin scheduler. added @lab3_3
       rrsched();
       break;
+    // added @lab5_2
+    case CAUSE_MEXTERNEL_S_TRAP:
+      {
+        //reset the PLIC so that we can get the next external interrupt.
+        volatile int irq = *(uint32 *)0xc201004L;
+        *(uint32 *)0xc201004L = irq;
+        volatile int *ctrl_reg = (void *)(uintptr_t)0x6000000c;
+        *ctrl_reg = *ctrl_reg | (1 << 4);
+        // TODO (lab5_2): implment the case of CAUSE_MEXTERNEL_S_TRAP.
+        // hint: the case of CAUSE_MEXTERNEL_S_TRAP is to get data from UART address and wake 
+        // the process. therefore, you need to construct an update_uartvalue_ctx structure
+        // then store the interrupt processing process pid and the uart value in it
+        // and use this structure to update the wake callback context of the process
+        // finally call do_wake to wake up the process.
+        panic( "You have to implement CAUSE_MEXTERNEL_S_TRAP to get data from UART and wake the process 0 in lab5_2.\n" );
+
+        break;
+      }
     case CAUSE_STORE_PAGE_FAULT:
     case CAUSE_LOAD_PAGE_FAULT:
       // the address of missing page is stored in stval

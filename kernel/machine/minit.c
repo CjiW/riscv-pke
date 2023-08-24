@@ -7,6 +7,9 @@
 #include "kernel/config.h"
 #include "spike_interface/spike_utils.h"
 #include "uart.h"
+#include "util/string.h"
+#include "fdt.h"
+
 //
 // global variables are placed in the .data section.
 // stack0 is the privilege mode stack(s) of the proxy kernel on CPU(s)
@@ -29,6 +32,10 @@ extern uint64 g_mem_size;
 // struct riscv_regs is define in kernel/riscv.h, and g_itrframe is used to save
 // registers when interrupt hapens in M mode. added @lab1_2
 riscv_regs g_itrframe;
+
+// following two variables are added @lab5_2
+volatile uint32* plic_priorities;
+ssize_t plic_ndevs;
 
 //
 // get the information of HTIF (calling interface) and the emulated memory by
@@ -108,6 +115,14 @@ void timerinit(uintptr_t hartid) {
 }
 
 //
+// set plic priority to the highest. added @lab5_2
+//
+void plic_init() {
+    for (size_t i = 1; i <= plic_ndevs; i++)
+        plic_priorities[i] = 6;
+}
+
+//
 // m_start: machine mode C entry point.
 //
 void m_start(uintptr_t hartid, uintptr_t dtb) {
@@ -119,12 +134,23 @@ void m_start(uintptr_t hartid, uintptr_t dtb) {
   query_uart(dtb);
   sprint("In m_start, hartid:%d\n", hartid);
 
+  // init plic. added @lab5_2
+  query_plic(dtb);
+  plic_init();
+  hart_plic_init();
+
   // init HTIF (Host-Target InterFace) and memory by using the Device Table Blob (DTB)
   // init_dtb() is defined above.
   init_dtb(dtb);
 
   // following code block is added @lab5_1
   setup_pmp();
+
+  // init bluetooth external interrupt. added @lab5_2
+  volatile int *ctrl_reg = (void *)(uintptr_t)0x6000000c;
+  int k = *ctrl_reg;
+  *ctrl_reg = k | (1 << 4);
+
   extern char smode_trap_vector;
   write_csr(stvec, (uint64)smode_trap_vector);
   write_csr(sscratch, 0);
