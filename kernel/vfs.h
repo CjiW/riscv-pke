@@ -30,6 +30,12 @@ int vfs_stat(struct file *file, struct istat *istat);
 int vfs_disk_stat(struct file *file, struct istat *istat);
 int vfs_link(const char *oldpath, const char *newpath);
 int vfs_unlink(const char *path);
+int vfs_ioctl(struct file *file, uint64 request, char *data);
+int64 vfs_mmap(struct file *file, char *addr, uint64 length, int prot,
+                  int flags, int64 offset);
+int vfs_read_mmap(struct file *file, uint64 num, char *base_addr, char *read_addr,
+                  uint64 length, char *buf);
+int vfs_munmap(struct file *file, uint64 num, uint64 length);
 int vfs_close(struct file *file);
 
 // directory interfaces
@@ -117,6 +123,7 @@ struct super_block {
   struct dentry *s_root;  // root dentry of inode
   struct device *s_dev;   // device of the superblock
   void *s_fs_info;        // filesystem-specific info. for rfs, it points bitmap
+  const struct sb_ops *s_ops;  // vfs super block operations
 };
 
 // abstract vfs inode
@@ -148,6 +155,14 @@ struct vinode_ops {
                      struct vinode *unlink_node);
   struct vinode *(*viop_lookup)(struct vinode *parent,
                                 struct dentry *sub_dentry);
+  
+  // added @lab5_3
+  int (*viop_ioctl)(struct vinode *node, uint64 request, char *data);
+  int64 (*viop_mmap)(struct vinode *node, char *addr, uint64 length, int prot,
+                    int flags, int64 offset);
+  int (*viop_read_mmap)(struct vinode *node, uint64 num, char *base_addr,
+                        char *read_addr, uint64 length, char *buf);
+  int (*viop_munmap)(struct vinode *node, uint64 num, uint64 length);
 
   // directory operations
   int (*viop_readdir)(struct vinode *dir_vinode, struct dir *dir, int *offset);
@@ -180,6 +195,10 @@ struct vinode_ops {
 #define viop_link(node, name, link_node)       (node->i_ops->viop_link(node, name, link_node))
 #define viop_unlink(node, name, unlink_node)   (node->i_ops->viop_unlink(node, name, unlink_node))
 #define viop_lookup(parent, sub_dentry)        (parent->i_ops->viop_lookup(parent, sub_dentry))
+#define viop_ioctl(node, request, data)        (node->i_ops->viop_ioctl(node, request, data))
+#define viop_mmap(node, addr, length, prot, flags, offset) (node->i_ops->viop_mmap(node, addr, length, prot, flags, offset))
+#define viop_read_mmap(node, num, base_addr, read_addr, length, buf) (node->i_ops->viop_read_mmap(node, num, base_addr, read_addr, length, buf))
+#define viop_munmap(node, num, length)         (node->i_ops->viop_munmap(node, num, length))
 #define viop_readdir(dir_vinode, dir, offset)  (dir_vinode->i_ops->viop_readdir(dir_vinode, dir, offset))
 #define viop_mkdir(dir, sub_dentry)            (dir->i_ops->viop_mkdir(dir, sub_dentry))
 #define viop_write_back_vinode(node)           (node->i_ops->viop_write_back_vinode(node))

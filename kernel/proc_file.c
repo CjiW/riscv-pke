@@ -22,10 +22,14 @@ void fs_init(void) {
   // initialize the vfs
   vfs_init();
 
-  // register hostfs and mount it as the root
+  // register hostfs-file and mount it as the root
   if( register_hostfs() < 0 ) panic( "fs_init: cannot register hostfs.\n" );
-  struct device *hostdev = init_host_device("HOSTDEV");
+  struct device *hostdev = init_host_device("HOSTDEV", "./hostfs_root");
   vfs_mount("HOSTDEV", MOUNT_AS_ROOT);
+
+  // register hostfs-dev and mount it as /dev
+  struct device *hostdev_dev = init_host_device("dev", "/dev");
+  vfs_mount("dev", MOUNT_DEFAULT);
 
   // register and mount rfs
   if( register_rfs() < 0 ) panic( "fs_init: cannot register rfs.\n" );
@@ -151,6 +155,67 @@ int do_stat(int fd, struct istat *istat) {
 int do_disk_stat(int fd, struct istat *istat) {
   struct file *pfile = get_opened_file(fd);
   return vfs_disk_stat(pfile, istat);
+}
+
+//
+// call ioctl
+//
+int do_ioctl(int fd, uint64 request, char *data) {
+  struct file *pfile = get_opened_file(fd);
+  return vfs_ioctl(pfile, request, data);
+}
+
+//
+// mmap file or device into memory
+//
+char *do_mmap(char *addr, uint64 length, int prot, int flags, int fd, int64 offset) {
+  struct file *pfile = get_opened_file(fd);
+  for (int i = 0; i < MMAP_MEM_SIZE; i++) {
+    if (current->mmap_mem[i].length == 0) {
+      int64 r = vfs_mmap(pfile, addr, length, prot, flags, offset);
+      if (r >= 0) {
+        current->mmap_mem[i].addr = current->mmap_memory_top;
+        current->mmap_memory_top += ROUNDUP(length, PGSIZE);
+        current->mmap_mem[i].length = length;
+        current->mmap_mem[i].num = r;
+        current->mmap_mem[i].fd = fd;
+        return (char *)current->mmap_mem[i].addr;
+      } else return (char *)-1;
+    }
+  }
+  return (char *)-1;
+}
+
+//
+// read from mmaped memory
+//
+int do_read_mmap(char *addr, int length, char *buf) {
+  for (int i = 0; i < MMAP_MEM_SIZE; i++) {
+    if ((uint64)addr >= current->mmap_mem[i].addr
+      && (uint64)addr + length <= 
+      current->mmap_mem[i].addr + current->mmap_mem[i].length) {
+      struct file *pfile = get_opened_file(current->mmap_mem[i].fd);
+      return vfs_read_mmap(pfile, current->mmap_mem[i].num, (char *)current->mmap_mem[i].addr,
+              addr, length, buf);
+    }
+  }
+  return -1;
+}
+
+//
+// unmap file or device into memory
+//
+int do_munmap(char *addr, uint64 length) {
+  for (int i = 0; i < MMAP_MEM_SIZE; i++) {
+    if (current->mmap_mem[i].addr == (uint64)addr && 
+        current->mmap_mem[i].length == length) {
+      struct file *pfile = get_opened_file(current->mmap_mem[i].fd);
+      int r = vfs_munmap(pfile, current->mmap_mem[i].num, length);
+      if (r >= 0) current->mmap_mem[i].length = 0;
+      return r;
+    }
+  }
+return -1;
 }
 
 //

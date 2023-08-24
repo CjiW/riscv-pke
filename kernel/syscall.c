@@ -75,6 +75,20 @@ uint64 sys_user_free_page(uint64 va) {
 }
 
 //
+// parent and child process share memory.
+//
+uint64 sys_user_allocate_share_page() {
+    void* pa = alloc_page();
+    memset((void *)pa, 0, PGSIZE);
+    uint64 va = current->share_memory_top;
+    current->share_memory_top += PGSIZE;
+    user_vm_map((pagetable_t)current->pagetable, va, PGSIZE, (uint64)pa,
+            prot_to_type(PROT_WRITE | PROT_READ, 1));
+
+    current->mapped_info[SHARE_SEGMENT].npages++;
+    return va;
+}
+//
 // kerenl entry point of naive_fork
 //
 ssize_t sys_user_fork() {
@@ -223,7 +237,7 @@ void sys_user_uart_putchar(uint8 ch) {
   *tx = ch;
 }
 
-// added @lab5_1. Sets the return value of the uart_getchar system call, which should be called
+// added @lab5_2. Sets the return value of the uart_getchar system call, which should be called
 // when waking up the process. For ctx, there needs to be the process number that initiates 
 // the system call and the data obtained from the uart device.
 void update_uartvalue(void *ctx) {
@@ -255,6 +269,34 @@ void sys_user_uart2_putchar(uint8 ch) {
   volatile uint32 *tx = (void*)(uintptr_t)0x60001004;
   while (*status & 0x00000008);
   *tx = ch;
+}
+
+ssize_t sys_user_ioctl(int fd, uint64 request, char *datava) {
+    char* datapa = (char*)user_va_to_pa((pagetable_t)(current->pagetable), datava);
+    return do_ioctl(fd, request, datapa);
+}
+
+ssize_t sys_user_mmap(char *addr, uint64 length, int prot, int flags, int fd, int64 offset) {
+    return (ssize_t)do_mmap(NULL, length, prot, flags, fd, offset);
+}
+
+ssize_t sys_user_munmap(char *addr, uint64 length) {
+    return do_munmap(addr, length);
+}
+
+ssize_t sys_user_readmmap(char *dstva, char *src, uint64 count) {
+    int i = 0;
+    while (i < count) {
+        uint64 addr = (uint64)dstva + i;
+        uint64 pa = lookup_pa((pagetable_t)current->pagetable, addr);
+        uint64 off = addr - ROUNDDOWN(addr, PGSIZE);
+        uint64 len = count - i < PGSIZE - off ? count - i : PGSIZE - off;
+        int r = do_read_mmap(src, len, (char *)pa + off);
+        if (r < 0) return -1; else {
+            i += len; src += len;
+        }
+    }
+    return count;
 }
 
 //
@@ -312,6 +354,16 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
       return sys_user_uart_getchar();
     case SYS_user_uart2_putchar:
 	    sys_user_uart2_putchar(a1);return 1;
+    case SYS_user_ioctl:
+      return sys_user_ioctl(a1, a2, (char *)a3);
+    case SYS_user_mmap:
+      return sys_user_mmap((char *)a1, a2, a3, a4, a5, a6);
+    case SYS_user_munmap:
+      return sys_user_munmap((char *)a1, a2);
+    case SYS_user_readmmap:
+      return sys_user_readmmap((char *)a1, (char *)a2, a3);
+    case SYS_user_allocate_share_page:
+      return sys_user_allocate_share_page();
     default:
       panic("Unknown syscall %ld \n", a0);
   }

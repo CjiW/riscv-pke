@@ -23,6 +23,8 @@ typedef struct trapframe_t {
 #define NPROC 32
 // maximum number of pages in a process's heap
 #define MAX_HEAP_PAGES 32
+// maximum number of memory map regions in a process
+#define MMAP_MEM_SIZE 2
 
 // possible status of a process
 enum proc_status {
@@ -39,8 +41,10 @@ enum segment_type {
   CONTEXT_SEGMENT, // trapframe segment
   SYSTEM_SEGMENT,  // system segment
   HEAP_SEGMENT,    // runtime heap segment
+  SHARE_SEGMENT,   // shared segment
   CODE_SEGMENT,    // ELF segment
   DATA_SEGMENT,    // ELF segment
+  WRE_SEGMENT,     // ELF segment
 };
 
 // the VM regions mapped to a user process
@@ -61,6 +65,11 @@ typedef struct process_heap_manager {
   // the number of free pages in the heap
   uint32 free_pages_count;
 }process_heap_manager;
+
+typedef struct mmap_t{
+  uint64 addr, length, num;
+  int fd;
+}mmap_t;
 
 // the extremely simple definition of process, used for begining labs of PKE
 typedef struct process_t {
@@ -98,6 +107,13 @@ typedef struct process_t {
   // it will be called when process is waken up.
   void (*wake_callback)(void *);
   void *wake_callback_arg;
+
+  // shared memory. added @lab5_3
+  uint64 share_memory_top;
+
+  // mmap memory. added @lab5_3
+  uint64 mmap_memory_top;
+  mmap_t mmap_mem[MMAP_MEM_SIZE];
 }process;
 
 // switch to run user app

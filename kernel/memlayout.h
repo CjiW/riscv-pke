@@ -17,4 +17,10 @@
 // start virtual address (4MB) of our simple heap. added @lab2_2
 #define USER_FREE_ADDRESS_START 0x00000000 + PGSIZE * 1024
 
+// start virtual address (8MB) of our shared memory. added @lab5_3
+#define USER_SHARE_MEMORY_START 0x00000000 + PGSIZE * 1024 * 2
+
+// start virtual address (12MB) of our mmap memory. added @lab5_3
+#define USER_MMAP_MEMORY_START 0x00000000 + PGSIZE * 1024 * 3
+
 #endif

@@ -17,6 +17,10 @@ const struct vinode_ops hostfs_i_ops = {
     .viop_create = hostfs_create,
     .viop_lseek = hostfs_lseek,
     .viop_lookup = hostfs_lookup,
+    .viop_ioctl = hostfs_ioctl,
+    .viop_mmap = hostfs_mmap,
+    .viop_munmap = hostfs_munmap,
+    .viop_read_mmap = hostfs_read_mmap,
 
     .viop_hook_open = hostfs_hook_open,
     .viop_hook_close = hostfs_hook_close,
@@ -51,7 +55,10 @@ int register_hostfs() {
 //
 // append new device under "name" to vfs_dev_list.
 //
-struct device *init_host_device(char *name) {
+struct device *init_host_device(char *name, char *hostfs_root) {
+  if (hostfs_num >= MAX_HOSTFS_NUM)
+    panic("init_host_device: Too many hostfs devices!\n");
+
   // find rfs in registered fs list
   struct file_system_type *fs_type = NULL;
   for (int i = 0; i < MAX_SUPPORTED_FS; i++) {
@@ -67,8 +74,12 @@ struct device *init_host_device(char *name) {
   struct device *device = (struct device *)alloc_page();
   // set the device name and index
   strcpy(device->dev_name, name);
-  // we only support one host-fs device
-  device->dev_id = 0;
+
+  // set the device id and root dir
+  device->dev_id = hostfs_num;
+  strcpy(host_root_dirs[hostfs_num], hostfs_root);
+  hostfs_num++;
+
   device->fs_type = fs_type;
 
   // add the device to the vfs device list
@@ -86,9 +97,12 @@ struct device *init_host_device(char *name) {
 // recursive call to assemble a path.
 //
 void path_backtrack(char *path, struct dentry *dentry) {
-  if (dentry->parent == NULL) {
+  if (dentry->sb->s_root == vfs_root_dentry
+            && dentry->parent == NULL)  // mount as root
     return;
-  }
+  else if (dentry->sb->s_root != vfs_root_dentry 
+            && dentry->parent->parent == NULL)  // mount as sub dir
+    return;
   path_backtrack(path, dentry->parent);
   strcat(path, "/");
   strcat(path, dentry->name);
@@ -98,7 +112,7 @@ void path_backtrack(char *path, struct dentry *dentry) {
 // obtain the absolute path for "dentry", from root to file.
 //
 void get_path_string(char *path, struct dentry *dentry) {
-  strcpy(path, H_ROOT_DIR);
+  strcpy(path, host_root_dirs[dentry->sb->s_dev->dev_id]);
   path_backtrack(path, dentry);
 }
 
@@ -133,7 +147,9 @@ int hostfs_update_vinode(struct vinode *vinode) {
   vinode->nlinks = stat.st_nlink;
   vinode->blocks = stat.st_blocks;
 
-  if (S_ISDIR(stat.st_mode)) {
+  if (S_ISCHR(stat.st_mode)) {
+    vinode->type = H_FILE;
+  } else if (S_ISDIR(stat.st_mode)) {
     vinode->type = H_DIR;
   } else if (S_ISREG(stat.st_mode)) {
     vinode->type = H_FILE;
@@ -194,6 +210,36 @@ struct vinode *hostfs_lookup(struct vinode *parent, struct dentry *sub_dentry) {
 
   child_inode->ref = 0;
   return child_inode;
+}
+
+int hostfs_ioctl(struct vinode *f_inode, uint64 request, char *data) {
+  spike_file_t *pf = (spike_file_t *)f_inode->i_fs_info;
+  if (pf < 0) {
+    sprint("hostfs_write: invalid file handle!\n");
+    return -1;
+  }
+  panic( "You need to call host's ioctl by frontend_syscall in lab5_3.\n" );
+}
+
+int64 hostfs_mmap(struct vinode *f_node, char *addr, uint64 length, int prot,
+                    int flags, int64 offset) {
+  spike_file_t *pf = (spike_file_t *)f_node->i_fs_info;
+  if (pf < 0) {
+    sprint("hostfs_mmap: invalid file handle!\n");
+    return -1;
+  }
+  return frontend_syscall(HTIFSYS_mmap, (uint64)addr, length, prot, flags,
+                          pf->kfd, offset, 0);
+}
+
+int hostfs_read_mmap(struct vinode *node, uint64 num, char *base_addr, char *read_addr,
+                uint64 length, char *buf) {
+  return frontend_syscall(HTIFSYS_readmmap, num, (uint64)read_addr - (uint64)base_addr, length,
+                    (uint64)buf, 0, 0, 0);
+}
+
+int hostfs_munmap(struct vinode *node, uint64 num, uint64 length) {
+  return frontend_syscall(HTIFSYS_munmap, num, length, 0, 0, 0, 0, 0);
 }
 
 //
@@ -294,7 +340,12 @@ struct super_block *hostfs_get_superblock(struct device *dev) {
   root_inode->type = H_DIR;
 
   struct dentry *root_dentry = alloc_vfs_dentry("/", root_inode, NULL);
+  root_dentry->sb = sb;
   sb->s_root = root_dentry;
 
   return sb;
 }
+
+// host root directory
+char host_root_dirs[MAX_HOSTFS_NUM][MAX_PATH_LEN];
+int hostfs_num = 0;

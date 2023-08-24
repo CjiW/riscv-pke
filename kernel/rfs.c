@@ -28,6 +28,10 @@ const struct vinode_ops rfs_i_ops = {
     .viop_link = rfs_link,
     .viop_unlink = rfs_unlink,
     .viop_lookup = rfs_lookup,
+    .viop_ioctl = rfs_ioctl,
+    .viop_mmap = rfs_mmap,
+    .viop_munmap = rfs_munmap,
+    .viop_read_mmap = rfs_read_mmap,
 
     .viop_readdir = rfs_readdir,
     .viop_mkdir = rfs_mkdir,
@@ -710,6 +714,26 @@ int rfs_unlink(struct vinode *parent, struct dentry *sub_dentry, struct vinode *
   }
 
   return 0;
+}
+
+int rfs_ioctl(struct vinode *node, uint64 request, char *data) {
+  panic("rfs_ioctl not implemented!\n");
+  return -1;
+}
+
+int64 rfs_mmap(struct vinode *node, char *addr, uint64 length, int prot,
+                    int flags, int64 offset) {
+  panic("rfs_mmap not implemented!\n");
+  return -1;
+}
+
+int rfs_read_mmap(struct vinode *node, uint64 num, char *base_addr, char *read_addr,
+                uint64 length, char *buf) {
+  panic("rfs_read_mmap not implemented!\n");
+}
+
+int rfs_munmap(struct vinode *node, uint64 num, uint64 length) {
+  panic("rfs_munmap not implemented!\n");
 }
 
 //

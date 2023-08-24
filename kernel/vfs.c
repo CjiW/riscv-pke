@@ -9,6 +9,7 @@
 #include "util/string.h"
 #include "util/types.h"
 #include "util/hash_table.h"
+#include "kernel/process.h"
 
 struct dentry *vfs_root_dentry;               // system root direntry
 struct super_block *vfs_sb_list[MAX_MOUNTS];  // system superblock list
@@ -355,6 +356,37 @@ int vfs_unlink(const char *path) {
 }
 
 //
+// call the ioctl function.
+//
+int vfs_ioctl(struct file *file, uint64 request, char *data) {
+  return viop_ioctl(file->f_dentry->dentry_inode, request, data);
+}
+
+//
+// mmap a file at vfs layer.
+//
+int64 vfs_mmap(struct file *file, char *addr, uint64 length, int prot,
+              int flags, int64 offset) {
+  return viop_mmap(file->f_dentry->dentry_inode, addr, length, prot, flags,
+                   offset);
+}
+
+//
+// read a mmap file at vfs layer.
+//
+int vfs_read_mmap(struct file *file, uint64 num, char *base_addr, char *read_addr,
+                  uint64 length, char *buf) {
+  return viop_read_mmap(file->f_dentry->dentry_inode, num, base_addr, read_addr, length, buf);
+}
+
+//
+// unmap a mmap file at vfs layer.
+//
+int vfs_munmap(struct file *file, uint64 num, uint64 length) {
+  return viop_munmap(file->f_dentry->dentry_inode, num, length);
+}
+
+//
 // close a file at vfs layer.
 //
 int vfs_close(struct file *file) {
@@ -604,6 +636,11 @@ struct dentry *alloc_vfs_dentry(const char *name, struct vinode *inode,
 
   dentry->parent = parent;
   dentry->d_ref = 0;
+  if (parent)
+    dentry->sb = parent->sb;
+  else
+    dentry->sb = NULL;
+
   return dentry;
 }
 

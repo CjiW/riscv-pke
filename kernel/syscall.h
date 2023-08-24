@@ -34,6 +34,13 @@
 #define SYS_user_uart_putchar (SYS_user_base + 30)
 #define SYS_user_uart_getchar (SYS_user_base + 31)
 #define SYS_user_uart2_putchar (SYS_user_base + 32)
+// added @lab5_3
+#define SYS_user_ioctl (SYS_user_base + 33)
+#define SYS_user_mmap (SYS_user_base + 34)
+#define SYS_user_munmap (SYS_user_base + 35)
+#define SYS_user_readmmap (SYS_user_base + 36)
+#define SYS_user_allocate_share_page (SYS_user_base + 37)
+
 long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, long a7);
 
 #endif

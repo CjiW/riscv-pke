@@ -1,5 +1,5 @@
 /*
- * routines that scan and load a (host) Executable and Linkable Format (ELF) file
+ * Utility routines that scan and load a (host) Executable and Linkable Format (ELF) file 
  * into the (emulated) memory.
  */
 
@@ -9,6 +9,7 @@
 #include "vmm.h"
 #include "pmm.h"
 #include "spike_interface/spike_utils.h"
+#include "util/functions.h"
 
 typedef struct elf_info_t {
   spike_file_t *f;
@@ -21,8 +22,6 @@ typedef struct elf_info_t {
 //
 static void *elf_alloc_mb(elf_ctx *ctx, uint64 elf_pa, uint64 elf_va, uint64 size) {
   elf_info *msg = (elf_info *)ctx->info;
-  // we assume that size of proram segment is smaller than a page.
-  kassert(size < PGSIZE);
   void *pa = alloc_page();
   if (pa == 0) panic("uvmalloc mem alloc falied\n");
 
@@ -77,11 +76,21 @@ elf_status elf_load(elf_ctx *ctx) {
     if (ph_addr.vaddr + ph_addr.memsz < ph_addr.vaddr) return EL_ERR;
 
     // allocate memory block before elf loading
-    void *dest = elf_alloc_mb(ctx, ph_addr.vaddr, ph_addr.vaddr, ph_addr.memsz);
+    int npage = ph_addr.memsz / PGSIZE;
+    if (ph_addr.memsz % PGSIZE > 0)
+      npage++;
+    int page;
+    uint64 vaddr = ph_addr.vaddr;
+    uint64 ph_addr_off = ph_addr.off;
 
-    // actual loading
-    if (elf_fpread(ctx, dest, ph_addr.memsz, ph_addr.off) != ph_addr.memsz)
-      return EL_EIO;
+    for(page=0; page<npage; page++) {
+      uint64 load_size = (page!=npage-1)?PGSIZE:(ph_addr.memsz % PGSIZE);
+      void* dest = elf_alloc_mb(ctx, vaddr, vaddr,load_size);
+      vaddr += PGSIZE;
+      // actual loading
+      if (elf_fpread(ctx, dest, load_size, ph_addr.off + page * PGSIZE) != load_size)
+        return EL_EIO;
+    }
 
     // record the vm region in proc->mapped_info. added @lab3_1
     int j;
@@ -89,7 +98,7 @@ elf_status elf_load(elf_ctx *ctx) {
       if( (process*)(((elf_info*)(ctx->info))->p)->mapped_info[j].va == 0x0 ) break;
 
     ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[j].va = ph_addr.vaddr;
-    ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[j].npages = 1;
+    ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[j].npages = npage;
 
     // SEGMENT_READABLE, SEGMENT_EXECUTABLE, SEGMENT_WRITABLE are defined in kernel/elf.h
     if( ph_addr.flags == (SEGMENT_READABLE|SEGMENT_EXECUTABLE) ){
@@ -98,6 +107,11 @@ elf_status elf_load(elf_ctx *ctx) {
     }else if ( ph_addr.flags == (SEGMENT_READABLE|SEGMENT_WRITABLE) ){
       ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[j].seg_type = DATA_SEGMENT;
       sprint( "DATA_SEGMENT added at mapped info offset:%d\n", j );
+    }else if ( (ph_addr.flags & SEGMENT_WRITABLE) &&
+               (ph_addr.flags & SEGMENT_READABLE) &&
+               (ph_addr.flags & SEGMENT_EXECUTABLE) ){
+      ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[j].seg_type = WRE_SEGMENT;
+      sprint( "WRE_SEGMENT added at mapped info offset:%d\n", j );
     }else
       panic( "unknown program segment encountered, segment flag:%d.\n", ph_addr.flags );
 

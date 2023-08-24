@@ -13,13 +13,13 @@
 
 uint64 do_user_call(uint64 sysnum, uint64 a1, uint64 a2, uint64 a3, uint64 a4, uint64 a5, uint64 a6,
                  uint64 a7) {
-  int ret;
+  uint64 ret;
 
   // before invoking the syscall, arguments of do_user_call are already loaded into the argument
   // registers (a0-a7) of our (emulated) risc-v machine.
   asm volatile(
       "ecall\n"
-      "sw a0, %0"  // returns a 32-bit value
+      "sd a0, %0"
       : "=m"(ret)
       :
       : "memory");
@@ -81,7 +81,7 @@ void yield() {
 //
 // lib call to open
 //
-int open(const char *pathname, int flags) {
+int open_u(const char *pathname, int flags) {
   return do_user_call(SYS_user_open, (uint64)pathname, flags, 0, 0, 0, 0, 0);
 }
 
@@ -207,4 +207,24 @@ void car_control(char val) {
   int i;
   for(i = 0; i < strlen(cmd); i++)
 	  uart2putchar(cmd[i]);
+}
+
+char *allocate_share_page() {
+    return (char *)do_user_call(SYS_user_allocate_share_page, 0, 0, 0, 0, 0, 0, 0);
+}
+
+int ioctl_u(int fd, uint64 request, void *data) {
+    return do_user_call(SYS_user_ioctl, fd, request, (uint64)data, 0, 0, 0, 0);
+}
+
+void *mmap_u(void *addr, uint64 length, int prot, int flags, int fd, int64 offset) {
+    return (void *)do_user_call(SYS_user_mmap, (uint64)addr, length, prot, flags, fd, offset, 0);
+}
+
+int munmap_u(void *addr, uint64 length) {
+    return do_user_call(SYS_user_munmap, (uint64)addr, length, 0, 0, 0, 0, 0);
+}
+
+int read_mmap_u(char *dstva, char *src, uint64 count) {
+    return do_user_call(SYS_user_readmmap, (uint64)dstva, (uint64)src, count, 0, 0, 0, 0);
 }

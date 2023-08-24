@@ -14,6 +14,10 @@ int do_write(int fd, char *buf, uint64 count);
 int do_lseek(int fd, int offset, int whence);
 int do_stat(int fd, struct istat *istat);
 int do_disk_stat(int fd, struct istat *istat);
+int do_ioctl(int fd, uint64 request, char *data);
+char *do_mmap(char *addr, uint64 length, int prot, int flags, int fd, int64 offset);
+int do_read_mmap(char *addr, int length, char *buf);
+int do_munmap(char *addr, uint64 length);
 int do_close(int fd);
 
 int do_opendir(char *pathname);

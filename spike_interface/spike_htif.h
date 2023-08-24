@@ -85,6 +85,7 @@
 #define HTIFSYS_lstat 1039
 #define HTIFSYS_time 1062
 
+#define HTIFSYS_readmmap 2001
 #define IS_ERR_VALUE(x) ((unsigned long)(x) >= (unsigned long)-4096)
 #define ERR_PTR(x) ((void*)(long)(x))
 #define PTR_ERR(x) ((long)(x))

@@ -81,6 +81,12 @@ int rfs_lseek(struct vinode *f_inode, ssize_t new_offset, int whence, int *offse
 int rfs_disk_stat(struct vinode *vinode, struct istat *istat);
 int rfs_link(struct vinode *parent, struct dentry *sub_dentry, struct vinode *link_node);
 int rfs_unlink(struct vinode *parent, struct dentry *sub_dentry, struct vinode *unlink_vinode);
+int rfs_ioctl(struct vinode *node, uint64 request, char *data);
+int64 rfs_mmap(struct vinode *node, char *addr, uint64 length, int prot,
+                    int flags, int64 offset);
+int rfs_read_mmap(struct vinode *node, uint64 num, char *base_addr, char *read_addr,
+                uint64 length, char *buf);
+int rfs_munmap(struct vinode *node, uint64 num, uint64 length);
 
 int rfs_hook_opendir(struct vinode *dir_vinode, struct dentry *dentry);
 int rfs_hook_closedir(struct vinode *dir_vinode, struct dentry *dentry);
