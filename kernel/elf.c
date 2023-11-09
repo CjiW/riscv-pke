@@ -7,12 +7,12 @@
 #include "string.h"
 #include "riscv.h"
 #include "spike_interface/spike_utils.h"
-
 typedef struct elf_info_t {
   spike_file_t *f;
   process *p;
 } elf_info;
 
+elf_ctx elfloader;
 //
 // the implementation of allocater. allocates memory space for later segment loading
 //
@@ -114,7 +114,7 @@ void load_bincode_from_host_elf(process *p) {
   sprint("Application: %s\n", arg_bug_msg.argv[0]);
 
   //elf loading. elf_ctx is defined in kernel/elf.h, used to track the loading process.
-  elf_ctx elfloader;
+  // elf_ctx elfloader;
   // elf_info is defined above, used to tie the elf file and its corresponding process.
   elf_info info;
 
@@ -137,4 +137,62 @@ void load_bincode_from_host_elf(process *p) {
   spike_file_close( info.f );
 
   sprint("Application program entry point (virtual address): 0x%lx\n", p->trapframe->epc);
+}
+
+void elf_print_backtrace(int n) {
+  int i, off;
+  elf_sect_header strtab;
+  for (i = 0, off = elfloader.ehdr.shoff; i < elfloader.ehdr.shnum; i++, off += sizeof(strtab)) {
+    if (elf_fpread(&elfloader, (void *)&strtab, sizeof(elf_sect_header), off) != sizeof(elf_sect_header))
+      panic("string table header get failed!\n");
+    if (strtab.type == SHT_STRTAB)
+      break;
+  }
+  // save string table
+  char strtab_info[STRTAB_MAX];
+  if (elf_fpread(&elfloader, (void *)strtab_info, sizeof(strtab_info), strtab.offset) != sizeof(strtab_info))
+    panic("string table get failed!\n");
+  // symbol table header
+  elf_sect_header symtab;
+  // look up for symbol table header's info
+  for (i = 0, off = elfloader.ehdr.shoff; i < elfloader.ehdr.shnum; i++, off += sizeof(symtab)) {
+    if (elf_fpread(&elfloader, (void *)&symtab, sizeof(elf_sect_header), off) != sizeof(elf_sect_header))
+      panic("symbol table header get failed!\n");
+    if (symtab.type == SHT_SYMTAB)
+      break;
+  }
+  // save symbol table's info
+  int sym_num = 0;
+  elf_sym symbols[MAX_DEPTH];
+  elf_sym temp;
+  off = symtab.offset;
+  for (i = 0; i < symtab.size / symtab.entsize; i++) {
+    if (elf_fpread(&elfloader, (void *)&temp, sizeof(temp), off) != sizeof(temp))
+      panic("symbol table get failed!\n");
+    if ((ELF64_ST_TYPE(temp.info)) == STT_FUNC)
+    {
+      symbols[sym_num] = temp;
+      sym_num++;
+      // sprint("symbol:%s\n",temp.name+strtab_info);
+    }
+    off += sizeof(temp);
+  }
+  // f8 address
+  uint64 *cur_s0 = ((uint64 *)current->trapframe->regs.s0 + 1);
+  uint64 place = *cur_s0;
+  // backtrace
+  for (i = 0; i < n; i++) {
+    for (int j = 0; j < sym_num; j++) {
+      if (symbols[j].value <= place && symbols[j].value + symbols[j].size > place) {
+        off = symbols[j].name;
+        sprint("%s\n", off + strtab_info, off);
+        if (strcmp(strtab_info + off, "main") == 0)
+          return;
+        place = symbols[j].value;
+        place += symbols[j].size;
+        break;
+      }
+    }
+  }
+  return;
 }
