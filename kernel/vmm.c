@@ -187,6 +187,17 @@ void user_vm_unmap(pagetable_t page_dir, uint64 va, uint64 size, int free) {
   // (use free_page() defined in pmm.c) the physical pages. lastly, invalidate the PTEs.
   // as naive_free reclaims only one page at a time, you only need to consider one page
   // to make user/app_naive_malloc to behave correctly.
-  panic( "You have to implement user_vm_unmap to free pages using naive_free in lab2_2.\n" );
+  uint64 first, last;
+  pte_t *pte;
 
+  for (first = ROUNDDOWN(va, PGSIZE), last = ROUNDDOWN(va + size - 1, PGSIZE);
+      first <= last; first += PGSIZE) {
+    if ((pte = page_walk(page_dir, first, 0)) == 0) return;
+    if (*pte & PTE_V) {
+      if (free) {
+        free_page((void *)PTE2PA(*pte));
+      }
+      *pte = 0;
+    }
+  }
 }
