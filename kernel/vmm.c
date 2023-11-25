@@ -209,11 +209,11 @@ void print_proc_vmspace(process* proc) {
   for( int i=0; i<proc->total_mapped_region; i++ ){
     sprint( "-va:%lx, npage:%d, ", proc->mapped_info[i].va, proc->mapped_info[i].npages);
     switch(proc->mapped_info[i].seg_type){
-      case CODE_SEGMENT: sprint( "type: CODE SEGMENT" ); break;
-      case DATA_SEGMENT: sprint( "type: DATA SEGMENT" ); break;
-      case STACK_SEGMENT: sprint( "type: STACK SEGMENT" ); break;
-      case CONTEXT_SEGMENT: sprint( "type: TRAPFRAME SEGMENT" ); break;
-      case SYSTEM_SEGMENT: sprint( "type: USER KERNEL STACK SEGMENT" ); break;
+      case CODE_SEGMENT: { sprint( "type: CODE SEGMENT" ); } break;
+      case DATA_SEGMENT: { sprint( "type: DATA SEGMENT" ); } break;
+      case STACK_SEGMENT: { sprint( "type: STACK SEGMENT" ); } break;
+      case CONTEXT_SEGMENT: { sprint( "type: TRAPFRAME SEGMENT" ); } break;
+      case SYSTEM_SEGMENT: { sprint( "type: USER KERNEL STACK SEGMENT" ); } break;
     }
     sprint( ", mapped to pa:%lx\n", lookup_pa(proc->pagetable, proc->mapped_info[i].va) );
   }

@@ -87,18 +87,24 @@ ssize_t sys_user_fork() {
 //
 long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, long a7) {
   switch (a0) {
-    case SYS_user_print:
+    case SYS_user_print: {
       return sys_user_print((const char*)a1, a2);
-    case SYS_user_exit:
+    }
+    case SYS_user_exit: {
       return sys_user_exit(a1);
+    }
     // added @lab2_2
-    case SYS_user_allocate_page:
+    case SYS_user_allocate_page: {
       return sys_user_allocate_page();
-    case SYS_user_free_page:
+    }
+    case SYS_user_free_page: {
       return sys_user_free_page(a1);
-    case SYS_user_fork:
+    }
+    case SYS_user_fork: {
       return sys_user_fork();
-    default:
+    }
+    default: {
       panic("Unknown syscall %ld \n", a0);
+    }
   }
 }
