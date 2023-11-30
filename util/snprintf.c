@@ -16,13 +16,15 @@ int32 vsnprintf(char* out, size_t n, const char* s, va_list vl) {
   for (; *s; s++) {
     if (format) {
       switch (*s) {
-        case 'l':
+        case 'l': {
           longarg = TRUE;
           break;
-        case 'p':
+        }
+        case 'p': {
           longarg = TRUE;
           if (++pos < n) out[pos - 1] = '0';
           if (++pos < n) out[pos - 1] = 'x';
+        }
         case 'x': {
           long num = longarg ? va_arg(vl, long) : va_arg(vl, int);
           for (int i = 2 * (longarg ? sizeof(long) : sizeof(int)) - 1; i >= 0; i--) {
@@ -67,8 +69,9 @@ int32 vsnprintf(char* out, size_t n, const char* s, va_list vl) {
           format = FALSE;
           break;
         }
-        default:
+        default: {
           break;
+        }
       }
     } else if (*s == '%')
       format = TRUE;
