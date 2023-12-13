@@ -80,13 +80,15 @@ static void __check_fromhost(void) {
   // this should be from the console
   assert(FROMHOST_DEV(fh) == 1);
   switch (FROMHOST_CMD(fh)) {
-    case 0:
+    case 0: {
       htif_console_buf = 1 + (uint8_t)FROMHOST_DATA(fh);
-      break;
-    case 1:
-      break;
-    default:
+    } break;
+    case 1: {
+
+    } break;
+    default:{
       assert(0);
+    }
   }
 }
 
