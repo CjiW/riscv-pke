@@ -248,6 +248,27 @@ int do_fork( process* parent)
         child->mapped_info[child->total_mapped_region].seg_type = CODE_SEGMENT;
         child->total_mapped_region++;
       } break;
+      case DATA_SEGMENT: {
+        for (int j = 0; j < parent->mapped_info[i].npages; j++) {
+          uint64 pva = parent->mapped_info[i].va + j * PGSIZE;
+          uint64 ppa = lookup_pa(parent->pagetable, pva);
+          if (ppa == 0) {
+            panic("cannot find pa for va %lx", pva);
+          }
+          uint64 cpa = (uint64)alloc_page();
+          if (cpa == 0) {
+            panic("cannot allocate page for child");
+          }
+          memcpy((void*)cpa, (void*)ppa, PGSIZE);
+          user_vm_map((pagetable_t)child->pagetable, pva, PGSIZE, cpa,
+                      prot_to_type(PROT_WRITE | PROT_READ, 1));
+        }
+        child->mapped_info[child->total_mapped_region].va = parent->mapped_info[i].va;
+        child->mapped_info[child->total_mapped_region].npages =
+          parent->mapped_info[i].npages;
+        child->mapped_info[child->total_mapped_region].seg_type = DATA_SEGMENT;
+        child->total_mapped_region++;
+      } break;
     }
   }
 
@@ -257,4 +278,44 @@ int do_fork( process* parent)
   insert_to_ready_queue( child );
 
   return child->pid;
+}
+
+int do_wait(process *proc, int pid) {
+  if (pid == -1) { // wait for any child_process
+    int child_pid = -1;
+    for (int i = 0; i < NPROC; i++) {
+      if (procs[i].parent == proc) { // find a child process
+        child_pid = procs[i].pid;
+        if (procs[i].status == ZOMBIE) { // child process is dead, reclaim it
+          procs[i].status = FREE;
+          current->status = READY;
+          insert_to_ready_queue( proc );
+          return child_pid;
+        }
+      }
+    }
+    if (child_pid == -1) { // no child process
+      return -1;
+    } else { // child process is alive
+      current->status = BLOCKED;
+      return -2;
+    }
+  } else if (pid >= 0 && pid < NPROC) { // wait for a specific child process
+    if (procs[pid].parent == proc) {
+      if (procs[pid].status == ZOMBIE) { // child process is dead, reclaim it
+        procs[pid].status = FREE;
+        current->status = READY;
+        insert_to_ready_queue( proc );
+        return pid;
+      } else { // child process is alive
+        current->status = BLOCKED;
+        return -2;
+      }
+    } else {
+      return -1;
+    }
+  } else {
+    return -1;
+  }
+
 }

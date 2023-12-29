@@ -35,6 +35,11 @@ ssize_t sys_user_exit(uint64 code) {
   sprint("User exit with code:%d.\n", code);
   // reclaim the current process, and reschedule. added @lab3_1
   free_process( current );
+  process *proc = current->parent;
+  if (proc && proc->status == BLOCKED) { // if the parent is blocked, unblock it
+    proc->status = READY;
+    insert_to_ready_queue(proc);
+  }
   schedule();
   return 0;
 }
@@ -96,6 +101,20 @@ ssize_t sys_user_yield() {
 }
 
 //
+// kerenl entry point of wait
+//
+uint64 sys_user_wait(uint64 pid) {
+  sprint("User call wait.\n");
+  int x = do_wait( current, pid );
+  if (x == -1) {
+    sys_user_yield();
+  } else if (x == -2) {
+    schedule();
+  }
+  return x;
+}
+
+//
 // [a0]: the syscall number; [a1] ... [a7]: arguments to the syscalls.
 // returns the code of success, (e.g., 0 means success, fail for otherwise)
 //
@@ -119,6 +138,9 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
     }
     case SYS_user_yield: {
       return sys_user_yield();
+    }
+    case SYS_user_wait: {
+      return sys_user_wait(a1);
     }
     default: {
       panic("Unknown syscall %ld \n", a0);
