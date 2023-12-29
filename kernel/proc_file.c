@@ -80,8 +80,10 @@ struct file *get_opened_file(int fd) {
 // return: -1 on failure; non-zero file-descriptor on success.
 //
 int do_open(char *pathname, int flags) {
+  char ap[MAX_PATH_LEN];
+  abs_path(pathname, ap);
   struct file *opened_file = NULL;
-  if ((opened_file = vfs_open(pathname, flags)) == NULL) return -1;
+  if ((opened_file = vfs_open(ap, flags)) == NULL) return -1;
 
   int fd = 0;
   if (current->pfiles->nfiles >= MAX_FILES) {
@@ -166,8 +168,10 @@ int do_close(int fd) {
 // return: the fd of the directory file
 //
 int do_opendir(char *pathname) {
+  char ap[MAX_PATH_LEN];
+  abs_path(pathname, ap);
   struct file *opened_file = NULL;
-  if ((opened_file = vfs_opendir(pathname)) == NULL) return -1;
+  if ((opened_file = vfs_opendir(ap)) == NULL) return -1;
 
   int fd = 0;
   struct file *pfile;
@@ -197,7 +201,9 @@ int do_readdir(int fd, struct dir *dir) {
 // make a new directory
 //
 int do_mkdir(char *pathname) {
-  return vfs_mkdir(pathname);
+  char ap[MAX_PATH_LEN];
+  abs_path(pathname, ap);
+  return vfs_mkdir(ap);
 }
 
 //
@@ -212,12 +218,54 @@ int do_closedir(int fd) {
 // create hard link to a file
 //
 int do_link(char *oldpath, char *newpath) {
-  return vfs_link(oldpath, newpath);
+  char oldap[MAX_PATH_LEN];
+  abs_path(oldpath, oldap);
+  char newap[MAX_PATH_LEN];
+  abs_path(newpath, newap);
+  return vfs_link(oldap, newap);
 }
 
 //
 // remove a hard link to a file
 //
 int do_unlink(char *path) {
-  return vfs_unlink(path);
+  char ap[MAX_PATH_LEN];
+  abs_path(path, ap);
+  return vfs_unlink(ap);
+}
+
+//
+// read the current working directory
+//
+int do_read_cwd(char *path) {
+  proc_file_management *pfiles = current->pfiles;
+  struct dentry *cwd = pfiles->cwd;
+  if (cwd == NULL) return -1;
+  if (cwd->name[0] != '/') strcpy(path, "/");
+  else strcpy(path, "");
+  strcat(path, cwd->name);
+  return 0;
+}
+
+//
+// change the current working directory
+//
+int do_change_cwd(char *path) {
+  char ap[MAX_PATH_LEN];
+  abs_path(path, ap);
+  struct dentry *new_cwd = lookup_final_dentry(ap, &vfs_root_dentry, NULL);
+  if (new_cwd == NULL) return -1;
+  current->pfiles->cwd = new_cwd;
+  return 0;
+}
+
+void abs_path(char *rp, char *ap){
+  if (rp[0] != '.') {
+    strcpy(ap, rp);
+    return;
+  }
+  do_read_cwd(ap);
+  strcat(ap, "/");
+  strcat(ap, rp);
+  return;
 }

@@ -38,6 +38,8 @@ int vfs_readdir(struct file *file, struct dir *dir);
 int vfs_mkdir(const char *path);
 int vfs_closedir(struct file *file);
 
+// path interfaces
+
 /**** vfs abstract object types ****/
 // system root direntry
 extern struct dentry *vfs_root_dentry;

@@ -24,6 +24,9 @@ int do_closedir(int fd);
 int do_link(char *oldpath, char *newpath);
 int do_unlink(char *path);
 
+int do_read_cwd(char *path);
+int do_change_cwd(char *path);
+
 void fs_init(void);
 
 // data structure that manages all openned files in a PCB
@@ -37,4 +40,6 @@ proc_file_management *init_proc_file_management(void);
 
 void reclaim_proc_file_management(proc_file_management *pfiles);
 
+// utility functions
+void abs_path(char *rp, char *ap);
 #endif

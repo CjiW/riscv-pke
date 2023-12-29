@@ -473,6 +473,18 @@ int vfs_mkdir(const char *path) {
   new_dir_inode->ref++;
   hash_put_dentry(new_dentry);
   hash_put_vinode(new_dir_inode);
+  // create . and .. for a new directory
+  if (new_dentry != vfs_root_dentry) {
+    struct dentry *dot_dentry = alloc_vfs_dentry(".", new_dir_inode, new_dentry);
+    struct vinode *dot_inode = viop_lookup(new_dir_inode, dot_dentry);
+    struct dentry *dotdot_dentry =
+        alloc_vfs_dentry("..", parent->dentry_inode, new_dentry);
+    struct vinode *dotdot_inode = viop_lookup(new_dir_inode, dotdot_dentry);
+    hash_put_dentry(dot_dentry);
+    hash_put_vinode(dot_inode);
+    hash_put_dentry(dotdot_dentry);
+    hash_put_vinode(dotdot_inode);
+  }
   return 0;
 }
 
@@ -522,6 +534,19 @@ struct dentry *lookup_final_dentry(const char *path, struct dentry **parent,
   struct dentry *this = *parent;
 
   while (token != NULL) {
+    // deal with "." and ".."
+    if (strcmp(token, ".") == 0) {
+      token = strtok(NULL, "/");
+      continue;
+    } else if (strcmp(token, "..") == 0) {
+      if (this == vfs_root_dentry) {
+        token = strtok(NULL, "/");
+        continue;
+      }
+      this = this->parent;
+      token = strtok(NULL, "/");
+      continue;
+    }
     *parent = this;
     this = hash_get_dentry((*parent), token);  // try hash first
     if (this == NULL) {

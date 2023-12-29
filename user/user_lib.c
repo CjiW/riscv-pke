@@ -81,6 +81,7 @@ void yield() {
 // lib call to open
 //
 int open(const char *pathname, int flags) {
+  // TODO: relative path open
   return do_user_call(SYS_user_open, (uint64)pathname, flags, 0, 0, 0, 0, 0);
 }
 
@@ -123,6 +124,7 @@ int disk_stat_u(int fd, struct istat *istat) {
 // lib call to open dir
 //
 int opendir_u(const char *dirname) {
+  // TODO: relative path opendir
   return do_user_call(SYS_user_opendir, (uint64)dirname, 0, 0, 0, 0, 0, 0);
 }
 
@@ -137,6 +139,7 @@ int readdir_u(int fd, struct dir *dir) {
 // lib call to make dir
 //
 int mkdir_u(const char *pathname) {
+  // TODO: relative path mkdir
   return do_user_call(SYS_user_mkdir, (uint64)pathname, 0, 0, 0, 0, 0, 0);
 }
 
@@ -151,6 +154,7 @@ int closedir_u(int fd) {
 // lib call to link
 //
 int link_u(const char *fn1, const char *fn2){
+  // TODO: relative path link
   return do_user_call(SYS_user_link, (uint64)fn1, (uint64)fn2, 0, 0, 0, 0, 0);
 }
 
@@ -158,6 +162,7 @@ int link_u(const char *fn1, const char *fn2){
 // lib call to unlink
 //
 int unlink_u(const char *fn){
+  // TODO: relative path unlink
   return do_user_call(SYS_user_unlink, (uint64)fn, 0, 0, 0, 0, 0, 0);
 }
 
@@ -179,5 +184,6 @@ int read_cwd(char *path) {
 // lib call to change pwd
 //
 int change_cwd(const char *path) {
+  // TODO: relative path change_cwd
   return do_user_call(SYS_user_ccwd, (uint64)path, 0, 0, 0, 0, 0, 0);
 }
